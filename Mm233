@@ -2469,3 +2469,116 @@ local ConfigToggle = Tab:CreateToggle({
         end
     end,
 })
+
+local Tab = Window:CreateTab("Settings", 4483362458)
+
+-- Variables
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
+local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+local Humanoid = Character:WaitForChild("Humanoid")
+local RootPart = Character:WaitForChild("HumanoidRootPart")
+
+local tpwalkEnabled = false
+local jumpToggleEnabled = false
+local connection
+local jumpConnection
+local landConnection
+local wasJumping = false
+
+-- Function to enable/disable TPWalk
+local function toggleTPWalk(state)
+    if state then
+        if not connection then
+            connection = RunService.Heartbeat:Connect(function()
+                if tpwalkEnabled and RootPart and Humanoid then
+                    local moveVector = Humanoid.MoveDirection
+                    if moveVector.Magnitude > 0 then
+                        -- TPWalk 2x faster
+                        RootPart.CFrame = RootPart.CFrame + moveVector * (Humanoid.WalkSpeed / 16) * 0.5
+                    end
+                end
+            end)
+        end
+        tpwalkEnabled = true
+    else
+        tpwalkEnabled = false
+        if connection then
+            connection:Disconnect()
+            connection = nil
+        end
+    end
+end
+
+-- Function to detect jump and landing
+local function setupJumpDetection()
+    if jumpConnection then jumpConnection:Disconnect() end
+    if landConnection then landConnection:Disconnect() end
+    
+    -- Detects when jumping
+    jumpConnection = RunService.Heartbeat:Connect(function()
+        if jumpToggleEnabled and Humanoid and RootPart then
+            local isJumping = Humanoid:GetState() == Enum.HumanoidStateType.Freefall or 
+                            Humanoid:GetState() == Enum.HumanoidStateType.Jumping or
+                            Humanoid:GetState() == Enum.HumanoidStateType.Flying
+            
+            -- If started jumping, activate TPWalk
+            if isJumping and not wasJumping then
+                toggleTPWalk(true)
+                wasJumping = true
+            end
+            
+            -- If stopped jumping (touched ground), deactivate TPWalk
+            if not isJumping and wasJumping then
+                toggleTPWalk(false)
+                wasJumping = false
+            end
+        end
+    end)
+end
+
+-- Reconfigure when character respawns
+LocalPlayer.CharacterAdded:Connect(function(newCharacter)
+    Character = newCharacter
+    Humanoid = Character:WaitForChild("Humanoid")
+    RootPart = Character:WaitForChild("HumanoidRootPart")
+    wasJumping = false
+    
+    if jumpToggleEnabled then
+        setupJumpDetection()
+    end
+end)
+
+-- Main toggle
+local Toggle = Tab:CreateToggle({
+   Name = "2x speed glitch",
+   CurrentValue = false,
+   Flag = "TPWalkJumpToggle",
+   Callback = function(Value)
+        jumpToggleEnabled = Value
+        
+        if Value then
+            setupJumpDetection()
+            Rayfield:Notify({
+                Title = "2x speed glitch activated",
+                Content = "Jump to activate 2x TPWalk!",
+                Duration = 3,
+                Image = 4483362458
+            })
+        else
+            -- Clear all connections
+            if jumpConnection then jumpConnection:Disconnect() end
+            if landConnection then landConnection:Disconnect() end
+            toggleTPWalk(false)
+            wasJumping = false
+            
+            Rayfield:Notify({
+                Title = "2x speed glitch disabled",
+                Content = "System turned off",
+                Duration = 3,
+                Image = 4483362458
+            })
+        end
+   end,
+})
