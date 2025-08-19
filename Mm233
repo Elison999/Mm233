@@ -420,7 +420,7 @@ task.spawn(function()
 end)
 
 -- Toggle principal
-local Toggle = Tab:CreateToggle({
+TabInnocents:CreateToggle({
     Name = "Anti-Murder",
     CurrentValue = false,
     Flag = "AntiMurderToggle",
