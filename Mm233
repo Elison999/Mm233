@@ -307,6 +307,12 @@ end,
 })
 
 local TabInnocents = Window:CreateTab("Innocents", 4483362458)
+-- Variáveis
+local antiMurderEnabled = false
+local detectionRadius = 20
+local shiftLockLoop = nil
+local player = game.Players.LocalPlayer
+local runService = game:GetService("RunService")
 local autoRunEnabled = false
 local runDistance = 25
 local isRunning = false
@@ -376,7 +382,7 @@ local function runFromMurderer(murdererCharacter)
     
     -- Para de correr após um tempo
     task.spawn(function()
-        task.wait(2)
+        task.wait(0.001)
         isRunning = false
     end)
 end
@@ -409,9 +415,81 @@ task.spawn(function()
             end
         end
         
-        task.wait(0.1) -- Verifica a cada 0.5 segundos
+        task.wait(0.00001) -- Verifica a cada 0.5 segundos
     end
 end)
+
+-- Toggle principal
+local Toggle = Tab:CreateToggle({
+    Name = "Anti-Murder",
+    CurrentValue = false,
+    Flag = "AntiMurderToggle",
+    Callback = function(Value)
+        antiMurderEnabled = Value
+        
+        if antiMurderEnabled then
+            -- Inicia o loop de detecção
+            shiftLockLoop = runService.Heartbeat:Connect(function()
+                if detectMurderNearby() then
+                    toggleShiftLock(true)
+                else
+                    toggleShiftLock(false)
+                end
+            end)
+            
+            print("Anti-Murder ativado! Detector de distância: " .. detectionRadius)
+        else
+            -- Para o loop e desativa o shift lock
+            if shiftLockLoop then
+                shiftLockLoop:Disconnect()
+                shiftLockLoop = nil
+            end
+            toggleShiftLock(false)
+            
+            print("Anti-Murder desativado!")
+        end
+    end,
+})
+
+-- Função para ativar/desativar ShiftLock
+local function toggleShiftLock(enable)
+    if enable then
+        player.DevEnableMouseLock = true
+        game:GetService("UserInputService").MouseBehavior = Enum.MouseBehavior.LockCenter
+    else
+        player.DevEnableMouseLock = false
+        game:GetService("UserInputService").MouseBehavior = Enum.MouseBehavior.Default
+    end
+end
+
+-- Função para detectar murder próximo
+local function detectMurderNearby()
+    if not player.Character or not player.Character:FindFirstChild("HumanoidRootPart") then
+        return false
+    end
+    
+    local playerPosition = player.Character.HumanoidRootPart.Position
+    
+    for _, otherPlayer in pairs(game.Players:GetPlayers()) do
+        if otherPlayer ~= player and otherPlayer.Character and otherPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            -- Verifica se o jogador tem uma knife (é o murder)
+            local backpack = otherPlayer.Backpack
+            local character = otherPlayer.Character
+            
+            local hasKnife = (backpack and backpack:FindFirstChild("Knife")) or 
+                           (character and character:FindFirstChild("Knife"))
+            
+            if hasKnife then
+                local distance = (otherPlayer.Character.HumanoidRootPart.Position - playerPosition).Magnitude
+                if distance <= detectionRadius then
+                    return true
+                end
+            end
+        end
+    end
+    
+    return false
+end
 
 local TabSheriff = Window:CreateTab("Sheriff", 4483362458)
 local autoShootEnabled = true
