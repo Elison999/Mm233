@@ -498,6 +498,7 @@ local shootMode = "Curve"
 local prioritizePing = true
 local antiflingEnabled = false
 
+TabSheriff:CreateToggle({
 Name = "Auto Shoot",
 CurrentValue = true,
 Flag = "AutoShootToggle",
